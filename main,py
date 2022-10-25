@@ -3,6 +3,24 @@ from bs4 import BeautifulSoup
 from colorama import Fore, init
 
 
+class PageVideo:
+    def __init__(self, anime_name, episode_number, pagelink):
+        self.anime_name     = anime_name
+        self.episode_number = episode_number
+        self.pagelink       = pagelink
+
+    def __str__(self):
+        return f'Anime: {self.anime_name} | Number: {self.episode_number} | PageLink: {self.pagelink}'
+
+class Video:
+    def __init__(self, anime_name, episode_number, pagelink):
+        self.anime_name     = anime_name
+        self.episode_number = episode_number
+        self.pagelink          = pagelink
+
+    def __str__(self):
+        return f'Anime: {self.anime_name} | Number: {self.episode_number} | PageLink: {self.pagelink}'
+
 def GetUrl(htmltext:str):
     videos = []
     urls = []
@@ -30,7 +48,7 @@ def GetUrl(htmltext:str):
             url = a[starturl:endurl]
     return url
 
-def downloadFile(name, url):
+def DownloadFile(name, url):
     name = name + ".mp4"
     r = requests.get(url)
     f = open( name, 'wb');
@@ -42,20 +60,75 @@ def downloadFile(name, url):
     f.close()
 
 
+
+def GetList(obj):
+    if type(obj) is not list:
+        return [obj]
+    else:
+        return obj
+
+def GetPagesUrl(url):
+    counter = 0
+    pages_urls = GetList(url)
+    while (True):
+        html = requests.get(pages_urls[counter]).text
+        soup = BeautifulSoup(html, 'lxml')
+        nextPage = soup.find_all('a', 'next')
+        counter += 1
+        if ( len(nextPage) > 0 ):
+            pages_urls.append(nextPage[0].get('href'))
+        else:
+            break
+    return list(dict.fromkeys(pages_urls)) # Return a list without duplicate urls
+
+def GetPageVideosUrl(url):
+    pages_url = GetList(url)
+    videos_url = []
+    for page in pages_url:
+        html = requests.get(page).text
+        soup = BeautifulSoup(html, 'lxml')
+        videos = soup.find_all('a', 'col')
+        for video in videos:
+            videos_url.append(PageVideo(soup.title.text, video.get('title'), video.get('href')))
+    return videos_url
+
 init(autoreset=True)
-html = requests.get('https://goyabu.com/videos/8166/').text
+pages_urls = GetPagesUrl('https://goyabu.com/assistir/death-note-legendado/')
+for page in pages_urls:
+    print(Fore.MAGENTA + page)
+pages_video = GetPageVideosUrl(pages_urls)
+for page in pages_video:
+    print(page)
 
-url = GetUrl(html)
+# html = requests.get('https://goyabu.com/videos/8166/').text
+# url = GetUrl(html)
+# print(url)
+# if url != None:
+#     DownloadFile('abc', url)
 
-print(url)
+# html = requests.get('https://goyabu.com/assistir/death-note-legendado/').text
+# html = requests.get('https://goyabu.com/assistir/spy-x-family-parte-2/').text
+# soup = BeautifulSoup(html, 'lxml')
+# print(soup.title)
+# print('\n\n')
+# print(soup.p)
+# print('\n\n')
+# print(soup.find_all('h1'))
 
-if url != None:
-    downloadFile('abc', url)
+# for tag in soup.find_all(True):
+#     print(tag.name)
 
+# Videos
+# a = soup.find_all('a', 'col')
+# for b in a:
+#     print(b.get('title'))
+#     print(b.get('href'))
 
+# Pages
+# b = soup.find_all('a', 'next')
+# print(b)
 
-#print(html_text)
-#print(soup.title.text)
-#print(soup.p.text)
-
-#FoundVideoLink(html)
+# for c in a:
+    
+#     print(b.get('a'))
+#     print(b.get('href'))
