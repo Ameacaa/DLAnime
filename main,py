@@ -1,0 +1,61 @@
+import requests
+from bs4 import BeautifulSoup
+from colorama import Fore, init
+
+
+def GetUrl(htmltext:str):
+    videos = []
+    urls = []
+    url = None
+    strings = htmltext.splitlines()
+    for string in strings: # Get strings with '<video' string
+        if string.find('<video') != -1:
+            videos.append(string)
+    for video in videos: # For str with video tag, search 'src' argument
+        args = video.split();
+        for arg in args:
+            if arg.find('src=') != -1:
+                urls.append(arg)
+    if len(urls) > 1:
+        f = open(r'D:\\_Projects\\DLAnime\\UrlsToCheck.txt', 'w')
+        for url in urls:
+            try:
+                f.write(f'{url}\n')
+            except:
+                print(Fore.RED + url)
+    else:
+        for a in urls:
+            starturl = a.find('http')
+            endurl = a.find('.mp4') + 4
+            url = a[starturl:endurl]
+    return url
+
+def downloadFile(name, url):
+    name = name + ".mp4"
+    r = requests.get(url)
+    f = open( name, 'wb');
+    
+    for chunk in r.iter_content(chunk_size=255): 
+        if chunk: # filter out keep-alive new chunks
+            f.write(chunk)
+    print ("Done")
+    f.close()
+
+
+init(autoreset=True)
+html = requests.get('https://goyabu.com/videos/8166/').text
+
+url = GetUrl(html)
+
+print(url)
+
+if url != None:
+    downloadFile('abc', url)
+
+
+
+#print(html_text)
+#print(soup.title.text)
+#print(soup.p.text)
+
+#FoundVideoLink(html)
