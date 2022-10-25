@@ -4,22 +4,22 @@ from colorama import Fore, init
 
 
 class PageVideo:
-    def __init__(self, anime_name, episode_number, pagelink):
+    def __init__(self, anime_name, episode_number, page_link):
         self.anime_name     = anime_name
         self.episode_number = episode_number
-        self.pagelink       = pagelink
+        self.page_link      = page_link
 
-    def __str__(self):
-        return f'Anime: {self.anime_name} | Number: {self.episode_number} | PageLink: {self.pagelink}'
+    def __str__(self) -> str:
+        return f'Anime: {self.anime_name} | Number: {self.episode_number} | PageLink: {self.page_link}'
 
 class Video:
-    def __init__(self, anime_name, episode_number, pagelink):
+    def __init__(self, anime_name, episode_number, page_link):
         self.anime_name     = anime_name
         self.episode_number = episode_number
-        self.pagelink          = pagelink
+        self.page_link      = page_link
 
-    def __str__(self):
-        return f'Anime: {self.anime_name} | Number: {self.episode_number} | PageLink: {self.pagelink}'
+    def __str__(self) -> str:
+        return f'Anime: {self.anime_name} | Number: {self.episode_number} | PageLink: {self.page_link}'
 
 def GetUrl(htmltext:str):
     videos = []
@@ -67,38 +67,70 @@ def GetList(obj):
     else:
         return obj
 
+def GetSoup(url):
+    html = requests.get(url).text
+    return BeautifulSoup(html, 'lxml')
+
+def GetTitle(string : str):
+    string = string.removeprefix('Assistir')
+    string = string[0:string.find('-')]
+    string = string[0:string.find('Legendado')]
+    return string
+
+def GetEpisodeNumber(string : str):
+    string = string[string.find('Episódio') + len('Episódio'):].split()[0]
+    return string
+
+# Step 1 - Get all pages with episode selections
 def GetPagesUrl(url):
     counter = 0
     pages_urls = GetList(url)
     while (True):
-        html = requests.get(pages_urls[counter]).text
-        soup = BeautifulSoup(html, 'lxml')
+        soup = GetSoup(pages_urls[counter])
         nextPage = soup.find_all('a', 'next')
-        counter += 1
         if ( len(nextPage) > 0 ):
             pages_urls.append(nextPage[0].get('href'))
         else:
             break
+        counter += 1
     return list(dict.fromkeys(pages_urls)) # Return a list without duplicate urls
 
+# Step 2 - Get all link from episodes page selections (return page video link)
 def GetPageVideosUrl(url):
     pages_url = GetList(url)
     videos_url = []
     for page in pages_url:
-        html = requests.get(page).text
-        soup = BeautifulSoup(html, 'lxml')
+        soup = GetSoup(page)
         videos = soup.find_all('a', 'col')
         for video in videos:
-            videos_url.append(PageVideo(soup.title.text, video.get('title'), video.get('href')))
+            videos_url.append(PageVideo(GetTitle(soup.title.text), GetEpisodeNumber(video.get('title')), video.get('href')))
     return videos_url
 
+# Step 3 - Get url of the mp4 video
+def GetVideoUrl(url):
+    pages_video = GetList(url)
+    
+    for page in pages_video:
+        soup = GetSoup(page)
+
+
+
 init(autoreset=True)
-pages_urls = GetPagesUrl('https://goyabu.com/assistir/death-note-legendado/')
+urls = ['https://goyabu.com/assistir/spy-x-family-parte-2/',
+        'https://goyabu.com/assistir/death-note-legendado/',
+        'https://goyabu.com/assistir/black-clover/']
+
+# Step 1
+pages_urls = GetPagesUrl(urls)
 for page in pages_urls:
     print(Fore.MAGENTA + page)
+
+# Step 2
 pages_video = GetPageVideosUrl(pages_urls)
 for page in pages_video:
     print(page)
+
+
 
 # html = requests.get('https://goyabu.com/videos/8166/').text
 # url = GetUrl(html)
@@ -117,18 +149,3 @@ for page in pages_video:
 
 # for tag in soup.find_all(True):
 #     print(tag.name)
-
-# Videos
-# a = soup.find_all('a', 'col')
-# for b in a:
-#     print(b.get('title'))
-#     print(b.get('href'))
-
-# Pages
-# b = soup.find_all('a', 'next')
-# print(b)
-
-# for c in a:
-    
-#     print(b.get('a'))
-#     print(b.get('href'))
