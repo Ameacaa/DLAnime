@@ -1,7 +1,10 @@
+import re
 import requests
 from bs4 import BeautifulSoup
 from colorama import Fore, init
+import os
 
+DOWNLOAD_PATH = str(os.path.join(os.path.join(os.environ['USERPROFILE']), 'Videos') + '\\Animes\\')
 
 class PageVideo:
     def __init__(self, anime_name, episode_number, page_link):
@@ -13,46 +16,21 @@ class PageVideo:
         return f'Anime: {self.anime_name} | Number: {self.episode_number} | PageLink: {self.page_link}'
 
 class Video:
-    def __init__(self, anime_name, episode_number, page_link):
-        self.anime_name     = anime_name
-        self.episode_number = episode_number
-        self.page_link      = page_link
+    def __init__(self, path, name, link):
+        self.path = DOWNLOAD_PATH + path + '\\'
+        self.name = name
+        self.link = link
 
     def __str__(self) -> str:
-        return f'Anime: {self.anime_name} | Number: {self.episode_number} | PageLink: {self.page_link}'
+        return f'Name: {self.name} | Path: {self.path} | Link: {self.link}'
 
-def GetUrl(htmltext:str):
-    videos = []
-    urls = []
-    url = None
-    strings = htmltext.splitlines()
-    for string in strings: # Get strings with '<video' string
-        if string.find('<video') != -1:
-            videos.append(string)
-    for video in videos: # For str with video tag, search 'src' argument
-        args = video.split();
-        for arg in args:
-            if arg.find('src=') != -1:
-                urls.append(arg)
-    if len(urls) > 1:
-        f = open(r'D:\\_Projects\\DLAnime\\UrlsToCheck.txt', 'w')
-        for url in urls:
-            try:
-                f.write(f'{url}\n')
-            except:
-                print(Fore.RED + url)
-    else:
-        for a in urls:
-            starturl = a.find('http')
-            endurl = a.find('.mp4') + 4
-            url = a[starturl:endurl]
-    return url
-
-def DownloadFile(name, url):
+def DownloadFile(name, path, url):
     name = name + ".mp4"
     r = requests.get(url)
-    f = open( name, 'wb');
-    
+    if not os.path.exists(path):
+        os.makedirs(path)
+    f = open( path + name, 'wb');
+    print('Downloading')
     for chunk in r.iter_content(chunk_size=255): 
         if chunk: # filter out keep-alive new chunks
             f.write(chunk)
@@ -86,12 +64,12 @@ def GetPagesUrl(url):
     counter = 0
     pages_urls = GetList(url)
     while (True):
+        if (counter >= len(pages_urls)):
+            break
         soup = GetSoup(pages_urls[counter])
-        nextPage = soup.find_all('a', 'next')
+        nextPage = soup.find_all('a', 'next')        
         if ( len(nextPage) > 0 ):
             pages_urls.append(nextPage[0].get('href'))
-        else:
-            break
         counter += 1
     return list(dict.fromkeys(pages_urls)) # Return a list without duplicate urls
 
@@ -109,43 +87,43 @@ def GetPageVideosUrl(url):
 # Step 3 - Get url of the mp4 video
 def GetVideoUrl(url):
     pages_video = GetList(url)
-    
+    video_url = []
     for page in pages_video:
-        soup = GetSoup(page)
-
+        html = requests.get(page.page_link).text
+        for string in html.splitlines():
+            if string.find('<video') != -1 or string.find('<source') != -1 and string.find('src=') != -1:
+                try:
+                    url = re.search("(?P<url>https?://[^\s]+)", string).group("url")
+                    video_url.append(Video(page.anime_name, page.episode_number, url))
+                except:
+                    print(Fore.RED + 'Error in insering video object')
+    return video_url
 
 
 init(autoreset=True)
-urls = ['https://goyabu.com/assistir/spy-x-family-parte-2/',
-        'https://goyabu.com/assistir/death-note-legendado/',
-        'https://goyabu.com/assistir/black-clover/']
+# urls = ['https://goyabu.com/assistir/spy-x-family-parte-2/',
+#         'https://goyabu.com/assistir/death-note-legendado/',
+#         'https://goyabu.com/assistir/black-clover/']
+
+urls = 'https://goyabu.com/assistir/death-note-legendado/'
 
 # Step 1
+print(Fore.MAGENTA + 'Pages founds:')
 pages_urls = GetPagesUrl(urls)
-for page in pages_urls:
-    print(Fore.MAGENTA + page)
+for pageurl in pages_urls:
+    print(Fore.MAGENTA + '\t-' + pageurl)
 
 # Step 2
+print(Fore.BLUE + 'Pages Video found:')
 pages_video = GetPageVideosUrl(pages_urls)
-for page in pages_video:
-    print(page)
+for pagevideo in pages_video:
+    print(Fore.BLUE + '\t-' + str(pagevideo))
 
+print(Fore.CYAN + 'Searching video link to download:')
+videos = GetVideoUrl(pages_video)
+for video in videos:
+    #print(Fore.BLUE + video)
+    DownloadFile(name=video.name, path=video.path , url=video.link)
 
-
-# html = requests.get('https://goyabu.com/videos/8166/').text
-# url = GetUrl(html)
-# print(url)
-# if url != None:
-#     DownloadFile('abc', url)
-
-# html = requests.get('https://goyabu.com/assistir/death-note-legendado/').text
-# html = requests.get('https://goyabu.com/assistir/spy-x-family-parte-2/').text
-# soup = BeautifulSoup(html, 'lxml')
-# print(soup.title)
-# print('\n\n')
-# print(soup.p)
-# print('\n\n')
-# print(soup.find_all('h1'))
-
-# for tag in soup.find_all(True):
-#     print(tag.name)
+# TODO BLOB LINK
+# https://stackoverflow.com/questions/48034696/python-how-to-download-a-blob-url-video
