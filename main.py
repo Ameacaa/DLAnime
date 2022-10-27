@@ -80,18 +80,30 @@ def GetVideo(pages):
     return videos
 
 
-def DownloadFile(name, path, url):
-    name = name + ".mp4"
-    r = requests.get(url)
+def DownloadFile(video : Video):
+    # Check if directory exist
+    path = video.page.path
     if not os.path.exists(path):
         os.makedirs(path)
-    f = open( path + name, 'wb');
+    # Change path for file path
+    path = path + video.page.episode + ".mp4"
+    # Check if exist a url for this video
+    if len(urls) <= 0:
+        print('No URL found')
+        return
+    # Download mp4 link
+    url = video.links[0]
+    r = requests.get(url)
+    f = open( path, 'wb');
     print('Downloading')
     for chunk in r.iter_content(chunk_size=255): 
         if chunk: # filter out keep-alive new chunks
             f.write(chunk)
     print ("Done")
     f.close()
+    
+    
+    
 
 
 
@@ -122,9 +134,13 @@ if __name__ == '__main__':
     print(Fore.MAGENTA + 'Can take some minutes depending of internet speed and number of videos of the playlist')
     print('-'*100)
 
-videos, impStrings, pageLinks = GetVideo(GetPages(urls))
+videos = GetVideo(GetPages(urls))
 
 [video.info() for video in videos]
+
+
+for video in videos:
+    DownloadFile(video)
 
 # TODO DOWNLOAD
 # Download
