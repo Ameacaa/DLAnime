@@ -1,4 +1,3 @@
-from email.policy import default
 from colorama import Fore, init
 from bs4 import BeautifulSoup
 import requests
@@ -24,7 +23,7 @@ class Video:
         self.page.info()
         [print(Fore.CYAN + f'\t- {link}') for link in self.links]
 
-
+# Second Functions
 def GetList(obj):
     if type(obj) is not list:
         return [obj]
@@ -44,7 +43,7 @@ def GetEpisode(string : str):
     string = string[string.find('Episódio') + len('Episódio'):].split()[0]
     return string.strip()
 
-
+# Main Functions
 def GetPages(urls):
     urls = GetList(urls)
     pages = []
@@ -79,7 +78,25 @@ def GetVideo(pages):
         videos.append(Video(GetList(urls), page))
     return videos
 
+def GetVideo(links):
+    links = GetList(links)
+    videos = []
+    for link in links:
+        html = requests.get(link).text
+        urls = []
+        for string in html.splitlines():
+            if string.find('<video') != -1 or string.find('<source') != -1 and string.find('src=') != -1:
+                try:
+                    urlfound = None
+                    urlfound = re.search("(?P<url>https?://[^\s]+)", string)
+                    if urlfound != None:
+                        urls.append(urlfound.group("url")) 
+                except:
+                    print(Fore.RED + 'Error in insering video object')
+        videos.append(Video(GetList(urls), Page('_AnimeDL', str(hash(link)), 'Unkown')))
+    return videos
 
+# Download Function
 def DownloadFile(video : Video):
     # Check if directory exist
     path = video.page.path
@@ -109,13 +126,20 @@ def DownloadFile(video : Video):
 
 def GetUrl():
     arg = sys.argv
-    urls = []
-    
-    if len(arg == 1):
+
+    if len(arg) == 1:
         print('Put some urls in next')
         quit()
+    else:
+        urls = []
+        isPage = True
+        for c in range(1, len(arg)):
+            if ['vid', 'v', 'video'] in arg[c]:
+                isPage = False
+            else:
+                urls.append(arg[c])
+        return urls, isPage
 
-    return [urls.append(arg[c]) for c in range(1, len(arg))]
 
 if __name__ == '__main__':
     BANNER = """
@@ -128,19 +152,20 @@ if __name__ == '__main__':
     """
     
     os.system("cls")
-    urls = GetUrl()
+    urls, isPage = GetUrl()
     init(autoreset=True)
     print(Fore.MAGENTA + BANNER)
     print(Fore.MAGENTA + 'Can take some minutes depending of internet speed and number of videos of the playlist')
     print('-'*100)
 
-videos = GetVideo(GetPages(urls))
+    videos = GetVideo(GetPages(urls)) if isPage else GetVideo(urls)
 
-[video.info() for video in videos]
+    [video.info() for video in videos]
 
 
-for video in videos:
-    DownloadFile(video)
+    for video in videos:
+        DownloadFile(video)
+
 
 # TODO DOWNLOAD
 # Download
